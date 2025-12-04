@@ -1,0 +1,36 @@
+package aoc;
+
+import aoc.core.Day;
+import aoc.days.Day01;
+
+import java.util.Map;
+
+public class Runner {
+    private static final Map<Integer, Day> DAYS = Map.of(
+            1, new Day01()
+    );
+
+    public static void main(String[] args) {
+        if (args.length == 0) {
+            System.err.println("Usage: Runner <day-number> [--sample]");
+            System.exit(1);
+        }
+        int day = Integer.parseInt(args[0]);
+        boolean sample = args.length > 1 && args[1].equals("--sample");
+        Day solver = DAYS.get(day);
+        if (solver == null) {
+            System.err.println("Day " + day + " not implemented yet.");
+            System.exit(2);
+        }
+        String input = Input.read(day, sample);
+        long start = System.nanoTime();
+        String part1 = solver.part1(input);
+        String part2 = solver.part2(input);
+        long end = System.nanoTime();
+        System.out.println("Day " + day + ":");
+        System.out.println("  Part 1: " + part1);
+        System.out.println("  Part 2: " + part2);
+        System.out.printf("  Time: %.2f ms\n", (end - start) / 1_000_000.0);
+    }
+}
+

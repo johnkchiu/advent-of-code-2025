@@ -1,0 +1,35 @@
+# OS
+.DS_Store
+
+# IntelliJ IDEA / JetBrains
+*.iml
+.idea/
+out/
+
+# Gradle
+.gradle/
+build/
+# Gradle Wrapper logs
+.gradle/gradle-daemon/
+
+# Java
+hs_err_pid*
+replay_pid*
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+.tmp/
+.tmp/**/*
+
+# VS Code (if used)
+.vscode/
+
+# Inputs: keep versioned; uncomment to ignore large personal inputs
+# inputs/day*.txt
+
+# Misc
+*.swp
+
