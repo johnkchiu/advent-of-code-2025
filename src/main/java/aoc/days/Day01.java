@@ -3,27 +3,47 @@ package aoc.days;
 import aoc.core.Day;
 
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * See https://adventofcode.com/2025/day/1
+ */
 public class Day01 implements Day {
     @Override
     public String part1(String input) {
-        // Example: sum of integers, one per line
-        long sum = Arrays.stream(input.trim().split("\n"))
+        AtomicInteger start = new AtomicInteger(50);
+        AtomicInteger count = new AtomicInteger();
+
+        System.out.println("  - The dial starts by pointing at " + start + ".");
+
+        Arrays.stream(input.trim().split("\n"))
                 .filter(s -> !s.isBlank())
-                .mapToLong(Long::parseLong)
-                .sum();
-        return Long.toString(sum);
+                .forEach(s -> {
+                    // if 1st char in s is "L", then subtract the integer value of the rest of the string from start
+                    int num = Integer.parseInt(s.substring(1).trim());
+                    if (s.charAt(0) == 'L') {
+                        start.addAndGet(-num);
+                        while (start.intValue() < 0) {
+                            start.addAndGet(100);
+                        }
+                    } else if (s.charAt(0) == 'R') {
+                        start.addAndGet(num);
+                        while (start.intValue() > 99) {
+                            start.addAndGet(-100);
+                        }
+                    }
+                    if (start.get() == 0) {
+                        count.getAndIncrement();
+                    }
+                    System.out.println("  - The dial is rotated " + s + " to point at " + start + ".");
+                });
+        return Integer.toString(count.get());
     }
 
     @Override
     public String part2(String input) {
-        // Example: product of first two integers
-        long[] nums = Arrays.stream(input.trim().split("\n"))
-                .filter(s -> !s.isBlank())
-                .mapToLong(Long::parseLong)
-                .toArray();
-        if (nums.length < 2) return "0";
-        return Long.toString(nums[0] * nums[1]);
+        // no part two
+        return "NOTHING";
     }
 }
 

@@ -8,7 +8,7 @@ public class Day01Test {
     void samplePart1() {
         Day01 d = new Day01();
         String input = "1\n2\n3\n";
-        assertEquals("6", d.part1(input));
+        assertEquals("3", d.part1(input));
     }
 
     @Test
