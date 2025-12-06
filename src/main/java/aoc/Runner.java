@@ -2,12 +2,14 @@ package aoc;
 
 import aoc.core.Day;
 import aoc.days.Day01;
+import aoc.days.Day02;
 
 import java.util.Map;
 
 public class Runner {
     private static final Map<Integer, Day> DAYS = Map.of(
-            1, new Day01()
+            1, new Day01(),
+            2, new Day02()
     );
 
     public static void main(String[] args) {
