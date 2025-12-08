@@ -14,10 +14,17 @@ Features:
 - `src/main/java/aoc/Input.java` – reads input from resources
 - `src/main/java/aoc/days/Day01.java` – sample day implementation
 - `inputs/` – put your `dayXX.txt` and optional `dayXX_sample.txt` files here
+- `src/test/java/aoc/days/Day01Test.java` – sample test for Day 01
 
 ## Usage
 
 Place your input files under `inputs/` (they are copied to resources on build).
+
+Run tests:
+
+```fish
+./gradlew test
+```
 
 Run a day:
 
@@ -29,4 +36,5 @@ Run a day:
 Add new day:
 - Create `src/main/java/aoc/days/DayNN.java` implementing `Day`
 - Register it in `Runner.DAYS`
+- (optional) Add tests in `src/test/java` 
 

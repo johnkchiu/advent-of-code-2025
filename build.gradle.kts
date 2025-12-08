@@ -29,8 +29,19 @@ tasks.test {
 // Convenience: copy input files into resources on build
 sourceSets {
     named("main") {
+        java {
+            srcDir("src/main/java")
+        }
         resources {
             srcDir("inputs")
+        }
+    }
+    named("test") {
+        java {
+            srcDir("src/test/java")
+        }
+        resources {
+            srcDir("src/test/resources")
         }
     }
 }
