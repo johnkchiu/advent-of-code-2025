@@ -1,17 +1,20 @@
 package aoc;
 
+import java.util.Map;
+
 import aoc.core.Day;
 import aoc.days.Day01;
 import aoc.days.Day02;
 import aoc.days.Day03;
-
-import java.util.Map;
+import aoc.days.Day04;
 
 public class Runner {
+
     private static final Map<Integer, Day> DAYS = Map.of(
             1, new Day01(),
             2, new Day02(),
-            3, new Day03()
+            3, new Day03(),
+            4, new Day04()
     );
 
     public static void main(String[] args) {
@@ -37,4 +40,3 @@ public class Runner {
         System.out.printf("  Time: %.2f ms\n", (end - start) / 1_000_000.0);
     }
 }
-
