@@ -7,15 +7,17 @@ import aoc.days.Day01;
 import aoc.days.Day02;
 import aoc.days.Day03;
 import aoc.days.Day04;
+import aoc.days.Day05;
 
 public class Runner {
 
-    private static final Map<Integer, Day> DAYS = Map.of(
+        private static final Map<Integer, Day> DAYS = Map.of(
             1, new Day01(),
             2, new Day02(),
             3, new Day03(),
-            4, new Day04()
-    );
+            4, new Day04(),
+            5, new Day05()
+        );
 
     public static void main(String[] args) {
         if (args.length == 0) {
