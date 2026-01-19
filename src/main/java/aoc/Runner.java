@@ -11,10 +11,11 @@ import aoc.days.Day05;
 import aoc.days.Day06;
 import aoc.days.Day07;
 import aoc.days.Day08;
+import aoc.days.Day09;
 
 public class Runner {
 
-        private static final Map<Integer, Day> DAYS = Map.ofEntries(
+    private static final Map<Integer, Day> DAYS = Map.ofEntries(
             Map.entry(1, new Day01()),
             Map.entry(2, new Day02()),
             Map.entry(3, new Day03()),
@@ -22,8 +23,8 @@ public class Runner {
             Map.entry(5, new Day05()),
             Map.entry(6, new Day06()),
             Map.entry(7, new Day07()),
-            Map.entry(8, new Day08())
-        );
+            Map.entry(8, new Day08()),
+            Map.entry(9, new Day09()));
 
     public static void main(String[] args) {
         if (args.length == 0) {
