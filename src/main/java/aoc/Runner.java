@@ -9,6 +9,7 @@ import aoc.days.Day03;
 import aoc.days.Day04;
 import aoc.days.Day05;
 import aoc.days.Day06;
+import aoc.days.Day07;
 
 public class Runner {
 
@@ -18,7 +19,8 @@ public class Runner {
             3, new Day03(),
             4, new Day04(),
             5, new Day05(),
-            6, new Day06()
+            6, new Day06(),
+            7, new Day07()
         );
 
     public static void main(String[] args) {
