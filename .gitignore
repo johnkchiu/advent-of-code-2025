@@ -34,3 +34,7 @@ logs/
 *.swp
 
 bin/
+*.class
+.classpath
+.project
+.settings/
