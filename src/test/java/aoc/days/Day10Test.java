@@ -16,6 +16,6 @@ public class Day10Test {
     void samplePart2() {
         Day10 d = new Day10();
         String input = aoc.Input.read(10, true);
-        assertEquals("0", d.part2(input));
+        assertEquals("33", d.part2(input));
     }
 }
