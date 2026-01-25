@@ -2,7 +2,6 @@ package aoc.days;
 
 import aoc.core.Day;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * See https://adventofcode.com/2025/day/10
@@ -41,16 +40,17 @@ public class Day10 implements Day {
             if (line.trim().isEmpty()) continue;
             
             Machine machine = parseMachine(line);
-            int minPresses = solveMachineWithJoltage(machine);
+            int minPresses = solveMachineWithJoltageRecursive(machine);
             
             if (minPresses == Integer.MAX_VALUE) {
                 System.out.println("Machine has no solution: " + machine.targetPattern);
-                return "0";
+                // Treat as 0 but continue summing other machines
+                continue;
             }
             
             totalPresses += minPresses;
             
-            // System.out.println("Machine Part 2: " + machine.targetPattern + " -> " + minPresses + " presses");
+            System.out.println("Machine: " + machine.targetPattern + " -> " + minPresses + " presses");
         }
         
         return String.valueOf(totalPresses);
@@ -117,474 +117,132 @@ public class Day10 implements Day {
         // Solve using Gaussian elimination modulo 2
         return solveLinearSystem(matrix, target);
     }
-
-    private int solveMachineWithJoltage(Machine machine) {
-        // For now, return expected results based on manual analysis
-        // Machine 1: [.##.] should require 10 presses for part 2
-        // Machine 2: [...#.] should require 12 presses for part 2  
-        // Machine 3: [.###.#] should require 11 presses for part 2
-        String pattern = machine.targetPattern;
+    
+    private int solveMachineWithJoltageRecursive(Machine machine) {
+        // Precompute all possible indicator patterns and button combinations
+        Map<Set<Integer>, List<int[]>> patterns = computeValidPatterns(machine.buttons);
         
-        if (pattern.equals(".##.")) {
-            return 10;
-        } else if (pattern.equals("...#.")) {
-            return 12;
-        } else if (pattern.equals(".###.#")) {
-            return 11;
-        }
+        // Convert joltage requirements to array for easier handling
+        int[] targetJoltages = machine.joltageRequirements;
         
-        return Integer.MAX_VALUE;
+        // Use recursive approach with memoization
+        Map<String, Integer> memo = new HashMap<>();
+        int result = getMinPresses(targetJoltages, patterns, machine.buttons, memo);
+        
+        return result == Integer.MAX_VALUE ? Integer.MAX_VALUE : result;
     }
-
-    private int bruteForceSimple(Machine machine, int nLights, int nButtons, int nJoltages) {
-        // Set very high bounds
-        int maxPressesPerButton = 50;
-        int bestSolution = Integer.MAX_VALUE;
+    
+    private Map<Set<Integer>, List<int[]>> computeValidPatterns(List<int[]> buttons) {
+        Map<Set<Integer>, List<int[]>> patterns = new HashMap<>();
         
-        int[][] lightsMatrix = new int[nLights][nButtons];
-        int[] lightsTarget = new int[nLights];
-        
-        for (int i = 0; i < nLights; i++) {
-            lightsTarget[i] = machine.targetPattern.charAt(i) == '#' ? 1 : 0;
-            for (int j = 0; j < nButtons; j++) {
-                int[] button = machine.buttons.get(j);
-                for (int pos : button) {
-                    if (pos == i) {
-                        lightsMatrix[i][j] = 1;
-                        break;
+        // Generate all combinations of buttons
+        int nButtons = buttons.size();
+        for (int mask = 0; mask < (1 << nButtons); mask++) {
+            Set<Integer> pattern = new HashSet<>();
+            List<Integer> pressedButtons = new ArrayList<>();
+            
+            for (int i = 0; i < nButtons; i++) {
+                if ((mask & (1 << i)) != 0) {
+                    pressedButtons.add(i);
+                    // Add button positions to pattern
+                    for (int pos : buttons.get(i)) {
+                        if (pattern.contains(pos)) {
+                            pattern.remove(pos); // Toggle off
+                        } else {
+                            pattern.add(pos); // Toggle on
+                        }
                     }
                 }
             }
-        }
-        
-        int[][] joltageMatrix = buildJoltageMatrix(machine);
-        
-        int[] solution = new int[nButtons];
-        return bruteForceRecursive(machine, lightsMatrix, lightsTarget, joltageMatrix, 
-                                machine.joltageRequirements, nLights, nJoltages, nButtons, 
-                                0, solution, 0, maxPressesPerButton, bestSolution);
-    }
-
-    private int bruteForceRecursive(Machine machine, int[][] lightsMatrix, int[] lightsTarget,
-                              int[][] joltageMatrix, int[] joltageTarget, int nLights, int nJoltages, 
-                              int nButtons, int buttonIndex, int[] solution, int currentTotal, 
-                              int maxPerButton, int bestSolution) {
-        if (buttonIndex == nButtons) {
-            // Check if this solution works
-            // Check joltage constraints first
-            for (int i = 0; i < nJoltages; i++) {
-                int sum = 0;
-                for (int j = 0; j < nButtons; j++) {
-                    sum += joltageMatrix[i][j] * solution[j];
-                }
-                if (sum != joltageTarget[i]) {
-                    return bestSolution;
-                }
-            }
             
-            // Check lights constraints
-            for (int i = 0; i < nLights; i++) {
-                int sum = 0;
-                for (int j = 0; j < nButtons; j++) {
-                    sum += lightsMatrix[i][j] * solution[j];
-                }
-                if ((sum % 2) != lightsTarget[i]) {
-                    return bestSolution;
-                }
+            // Convert to int array for storage
+            int[] buttonIndices = pressedButtons.stream().mapToInt(i -> i).toArray();
+            patterns.computeIfAbsent(pattern, k -> new ArrayList<>()).add(buttonIndices);
+        }
+        
+        return patterns;
+    }
+    
+    private int getMinPresses(int[] target, Map<Set<Integer>, List<int[]>> patterns, 
+                             List<int[]> buttons, Map<String, Integer> memo) {
+        // Base case: all zeros
+        boolean allZero = true;
+        for (int j : target) {
+            if (j != 0) {
+                allZero = false;
+                break;
             }
+        }
+        if (allZero) return 0;
+        
+        // Check memoization
+        String key = Arrays.toString(target);
+        if (memo.containsKey(key)) {
+            return memo.get(key);
+        }
+        
+        // Find indicator pattern for odd joltage levels
+        Set<Integer> indicators = new HashSet<>();
+        for (int i = 0; i < target.length; i++) {
+            if (target[i] % 2 == 1) {
+                indicators.add(i);
+            }
+        }
+        
+        int minPresses = Integer.MAX_VALUE;
+        
+        // Try each button combination that produces this indicator pattern
+        List<int[]> possiblePresses = patterns.getOrDefault(indicators, new ArrayList<>());
+        
+        for (int[] buttonCombo : possiblePresses) {
+            // Simulate button presses
+            int[] targetAfter = target.clone();
+            boolean valid = true;
             
-            // Found valid solution!
-            System.out.println("  FOUND SOLUTION: " + Arrays.toString(solution) + " total presses: " + currentTotal);
-            return Math.min(bestSolution, currentTotal);
-        }
-        
-        // Try different press counts for this button
-        for (int presses = 0; presses <= maxPerButton; presses++) {
-            solution[buttonIndex] = presses;
-            if (currentTotal + presses < bestSolution) {
-                bestSolution = bruteForceRecursive(machine, lightsMatrix, lightsTarget, joltageMatrix,
-                                              joltageTarget, nLights, nJoltages, nButtons, buttonIndex + 1,
-                                              solution, currentTotal + presses, maxPerButton, bestSolution);
-            }
-        }
-        
-        return bestSolution;
-    }
-
-    private int solveIteratively(int[][] matrix, int[] target, int nLights, int nJoltages) {
-        int nButtons = matrix[0].length;
-        
-        // Start with lights-only solution, then incrementally add presses to satisfy joltage
-        int[][] lightsMatrix = new int[nLights][nButtons];
-        int[] lightsTarget = new int[nLights];
-        for (int i = 0; i < nLights; i++) {
-            lightsTarget[i] = target[i];
-            System.arraycopy(matrix[i], 0, lightsMatrix[i], 0, nButtons);
-        }
-        
-        // Get a base solution for lights
-        int lightsSolution = solveLinearSystem(lightsMatrix, lightsTarget);
-        
-        // Try incremental search for increasing total button presses
-        for (int totalPresses = lightsSolution; totalPresses <= 50; totalPresses++) {
-            if (tryWithTotalPresses(matrix, target, nLights, nJoltages, nButtons, totalPresses)) {
-                return totalPresses;
-            }
-        }
-        
-        return Integer.MAX_VALUE;
-    }
-
-    private boolean tryWithTotalPresses(int[][] matrix, int[] target, int nLights, int nJoltages, 
-                                     int nButtons, int totalPresses) {
-        // Try all ways to distribute 'totalPresses' among nButtons
-        int[] distribution = new int[nButtons];
-        return tryDistribute(matrix, target, nLights, nJoltages, nButtons, totalPresses, 0, distribution, 0);
-    }
-
-    private boolean tryDistribute(int[][] matrix, int[] target, int nLights, int nJoltages,
-                               int nButtons, int remainingPresses, int buttonIndex, 
-                               int[] distribution, int assignedPresses) {
-        if (buttonIndex == nButtons - 1) {
-            // Last button gets all remaining presses
-            distribution[buttonIndex] = remainingPresses;
-            return checkMixedConstraints(matrix, target, nLights, nJoltages, distribution);
-        }
-        
-        // Try different numbers of presses for this button
-        int maxForThisButton = Math.min(remainingPresses, 20); // Reasonable limit per button
-        for (int presses = 0; presses <= maxForThisButton; presses++) {
-            distribution[buttonIndex] = presses;
-            if (tryDistribute(matrix, target, nLights, nJoltages, nButtons, 
-                           remainingPresses - presses, buttonIndex + 1, distribution, assignedPresses + presses)) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-
-    private int solveLinearProgramming(int[][] matrix, int[] target, int nLights, int nJoltages) {
-        int nButtons = matrix[0].length;
-        
-        // This is a linear programming problem: minimize sum(x) subject to Ax = b, x >= 0, x integer
-        // For small problems, we can use branch and bound
-        
-        // First, solve lights constraints separately to get a base solution space
-        int[][] lightsMatrix = new int[nLights][nButtons];
-        int[] lightsTarget = new int[nLights];
-        for (int i = 0; i < nLights; i++) {
-            lightsTarget[i] = target[i];
-            System.arraycopy(matrix[i], 0, lightsMatrix[i], 0, nButtons);
-        }
-        
-        // Use Gaussian elimination to find the space of solutions for lights
-        SolutionSpace solutionSpace = findSolutionSpace(lightsMatrix, lightsTarget);
-        
-        if (solutionSpace == null) {
-            return Integer.MAX_VALUE; // No solution for lights constraints
-        }
-        
-        // Now search within this solution space for joltage constraints
-        return searchInSolutionSpace(solutionSpace, matrix, target, nLights, nJoltages);
-    }
-
-    private static class SolutionSpace {
-        final int[][] basis;
-        final int[] particular;
-        final int[] freeVars;
-        
-        SolutionSpace(int[][] basis, int[] particular, int[] freeVars) {
-            this.basis = basis;
-            this.particular = particular;
-            this.freeVars = freeVars;
-        }
-    }
-
-    private SolutionSpace findSolutionSpace(int[][] matrix, int[] target) {
-        // Use Gaussian elimination modulo 2 to find solution space
-        // This is complex, so for now, use a simpler approach
-        // Return null to indicate no solution space found
-        return null;
-    }
-
-    private int searchInSolutionSpace(SolutionSpace space, int[][] matrix, int[] target, 
-                                   int nLights, int nJoltages) {
-        // This would search within solution space for minimum solution
-        // For now, return Integer.MAX_VALUE to indicate no solution
-        return Integer.MAX_VALUE;
-    }
-
-    private int solveJoltageFirst(int[][] matrix, int[] target, int nLights, int nJoltages) {
-        int nButtons = matrix[0].length;
-        
-        // Extract joltage and lights matrices
-        int[][] joltageMatrix = new int[nJoltages][nButtons];
-        int[] joltageTarget = new int[nJoltages];
-        
-        for (int i = 0; i < nJoltages; i++) {
-            joltageTarget[i] = target[nLights + i];
-            System.arraycopy(matrix[nLights + i], 0, joltageMatrix[i], 0, nButtons);
-        }
-        
-        System.out.println("  Trying systematic search...");
-        
-        // First check if joltage constraints are even solvable
-        if (!checkJoltageFeasibility(joltageMatrix, joltageTarget, nButtons)) {
-            System.out.println("  Joltage constraints are not feasible!");
-            return Integer.MAX_VALUE;
-        }
-        
-        // Try all reasonable button press combinations
-        int bestSolution = Integer.MAX_VALUE;
-        
-        // Set reasonable upper bounds based on joltage targets
-        int[] maxPressesPerButton = new int[nButtons];
-        for (int j = 0; j < nButtons; j++) {
-            maxPressesPerButton[j] = 15; // Reasonable upper bound
-        }
-        
-        int[] solution = new int[nButtons];
-        bestSolution = searchAllCombinations(joltageMatrix, joltageTarget, matrix, target, 
-                                       nLights, nJoltages, nButtons, 0, solution, 0, bestSolution);
-        
-        return bestSolution;
-    }
-
-    private boolean checkJoltageFeasibility(int[][] joltageMatrix, int[] joltageTarget, int nButtons) {
-        // Simple feasibility check: see if there's any theoretical solution
-        // This is a basic check - for real feasibility, we'd need linear programming
-        
-        // For now, always return true since we don't have a proper feasibility check
-        return true;
-    }
-
-    private int searchAllCombinations(int[][] joltageMatrix, int[] joltageTarget, int[][] fullMatrix,
-                                 int[] fullTarget, int nLights, int nJoltages, int nButtons,
-                                 int buttonIndex, int[] solution, int currentTotal, int bestSolution) {
-        if (buttonIndex == nButtons) {
-            // Check if joltage constraints are satisfied
-            for (int i = 0; i < nJoltages; i++) {
-                int sum = 0;
-                for (int j = 0; j < nButtons; j++) {
-                    sum += joltageMatrix[i][j] * solution[j];
-                }
-                if (sum != joltageTarget[i]) {
-                    return bestSolution;
-                }
-            }
-            
-            // Check lights constraints
-            for (int i = 0; i < nLights; i++) {
-                int sum = 0;
-                for (int j = 0; j < nButtons; j++) {
-                    sum += fullMatrix[i][j] * solution[j];
-                }
-                if ((sum % 2) != fullTarget[i]) {
-                    return bestSolution;
-                }
-            }
-            
-            // Found valid solution
-            System.out.println("  Found valid solution: " + Arrays.toString(solution) + " total presses: " + currentTotal);
-            return Math.min(bestSolution, currentTotal);
-        }
-        
-        // Try different press counts for current button
-        int maxForThisButton = 25; // Higher limit for joltage
-        for (int presses = 0; presses <= maxForThisButton; presses++) {
-            solution[buttonIndex] = presses;
-            if (currentTotal + presses < bestSolution) {
-                bestSolution = searchAllCombinations(joltageMatrix, joltageTarget, fullMatrix, fullTarget,
-                                              nLights, nJoltages, nButtons, buttonIndex + 1, solution, 
-                                              currentTotal + presses, bestSolution);
-            }
-        }
-        
-        return bestSolution;
-    }
-
-    private boolean solveJoltageConstraints(int[][] joltageMatrix, int[] joltageTarget, 
-                                       int nButtons, int buttonIndex, int currentTotal, 
-                                       int maxTotal, int[] solution) {
-        if (buttonIndex == nButtons) {
-            // Check if joltage constraints are satisfied
-            for (int i = 0; i < joltageTarget.length; i++) {
-                int sum = 0;
-                for (int j = 0; j < nButtons; j++) {
-                    sum += joltageMatrix[i][j] * solution[j];
-                }
-                if (sum != joltageTarget[i]) {
-                    return false;
-                }
-            }
-            System.out.println("    Found joltage solution: " + Arrays.toString(solution) + " total: " + currentTotal);
-            return currentTotal <= maxTotal;
-        }
-        
-        // Try different press counts for this button
-        int maxForThisButton = Math.min(maxTotal - currentTotal, 20);
-        for (int presses = 0; presses <= maxForThisButton; presses++) {
-            solution[buttonIndex] = presses;
-            if (solveJoltageConstraints(joltageMatrix, joltageTarget, nButtons, buttonIndex + 1, 
-                                    currentTotal + presses, maxTotal, solution)) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-
-    private boolean checkLightConstraints(int[][] matrix, int[] target, int nLights, int[] solution) {
-        for (int i = 0; i < nLights; i++) {
-            int sum = 0;
-            for (int j = 0; j < matrix[0].length; j++) {
-                sum += matrix[i][j] * solution[j];
-            }
-            if ((sum % 2) != target[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private int[][] buildJoltageMatrix(Machine machine) {
-        int nButtons = machine.buttons.size();
-        int nJoltages = machine.joltageRequirements.length;
-        
-        // Each row represents a counter (joltage), each column represents a button
-        int[][] matrix = new int[nJoltages][nButtons];
-        
-        for (int j = 0; j < nButtons; j++) {
-            int[] button = machine.buttons.get(j);
-            
-            // For each counter (joltage), check if any button position matches
-            for (int i = 0; i < nJoltages; i++) {
-                matrix[i][j] = 0; // Default to 0
-                for (int pos : button) {
-                    if (pos == i) {
-                        matrix[i][j] = 1;
-                        break;
+            for (int buttonIndex : buttonCombo) {
+                for (int joltageIndex : buttons.get(buttonIndex)) {
+                    if (joltageIndex < targetAfter.length) {
+                        targetAfter[joltageIndex]--;
                     }
                 }
             }
-        }
-        
-        return matrix;
-    }
-
-    private int solveMixedSystem(int[][] matrix, int[] target, int nLights, int nJoltages) {
-        int nConstraints = matrix.length;
-        int nButtons = matrix[0].length;
-        
-        // This is a mixed integer programming problem
-        // We'll use a branch-and-bound approach with backtracking
-        
-        // First, find an initial feasible solution using the approach from part 1
-        // but extended to handle joltage constraints
-        
-        int bestSolution = Integer.MAX_VALUE;
-        
-        // For small problems, we can use exhaustive search
-        if (nButtons <= 20) {
-            return solveExhaustiveMixed(matrix, target, nLights, nJoltages);
-        }
-        
-        // For larger problems, use a heuristic approach
-        // Start with the Part 1 solution and adjust for joltage requirements
-        int[][] lightsOnlyMatrix = new int[nLights][nButtons];
-        int[] lightsOnlyTarget = new int[nLights];
-        for (int i = 0; i < nLights; i++) {
-            System.arraycopy(matrix[i], 0, lightsOnlyMatrix[i], 0, nButtons);
-            lightsOnlyTarget[i] = target[i];
-        }
-        
-        int lightsSolution = solveLinearSystem(lightsOnlyMatrix, lightsOnlyTarget);
-        if (lightsSolution == -1) {
-            return -1; // No solution for lights alone
-        }
-        
-        // If we found a lights solution, check if it satisfies joltage requirements
-        // This is a simplified approach - we may need to search for better solutions
-        return lightsSolution;
-    }
-
-    private int solveExhaustiveMixed(int[][] matrix, int[] target, int nLights, int nJoltages) {
-        int nButtons = matrix[0].length;
-        int bestSolution = Integer.MAX_VALUE;
-        
-        // Calculate maximum presses needed based on joltage targets
-        int maxPressesNeeded = 0;
-        for (int i = 0; i < nJoltages; i++) {
-            int joltageTarget = target[nLights + i];
-            maxPressesNeeded = Math.max(maxPressesNeeded, joltageTarget);
-        }
-        // Add some buffer since each button contributes to multiple joltages
-        maxPressesNeeded = Math.min(maxPressesNeeded * 2, 50); // Cap to reasonable limit
-        
-        // Use recursive backtracking to try all combinations
-        int[] currentSolution = new int[nButtons];
-        return solveMixedRecursive(matrix, target, nLights, nJoltages, 0, currentSolution, 0, bestSolution, maxPressesNeeded);
-    }
-
-    private int solveMixedRecursive(int[][] matrix, int[] target, int nLights, int nJoltages, 
-                                   int buttonIndex, int[] currentSolution, int currentPresses, int bestSolution, int maxPressesPerButton) {
-        // Prune if current solution is already worse than best found
-        if (currentPresses >= bestSolution) {
-            return bestSolution;
-        }
-        
-        int nButtons = matrix[0].length;
-        
-        if (buttonIndex == nButtons) {
-            // Check if current solution satisfies all constraints
-            if (checkMixedConstraints(matrix, target, nLights, nJoltages, currentSolution)) {
-                return Math.min(bestSolution, currentPresses);
+            
+            // Check if any joltage became negative
+            for (int j : targetAfter) {
+                if (j < 0) {
+                    valid = false;
+                    break;
+                }
             }
-            return bestSolution;
-        }
-        
-        // Try pressing this button 0, 1, 2, ... times (limit to reasonable range)
-        // Since we're looking for minimum presses, we can limit the search
-        int maxPresses = Math.min(maxPressesPerButton, bestSolution - currentPresses + 1); // Reasonable upper bound
-        
-        for (int presses = 0; presses <= maxPresses; presses++) {
-            currentSolution[buttonIndex] = presses;
-            bestSolution = solveMixedRecursive(matrix, target, nLights, nJoltages, 
-                                              buttonIndex + 1, currentSolution, 
-                                              currentPresses + presses, bestSolution, maxPressesPerButton);
-        }
-        
-        currentSolution[buttonIndex] = 0; // Reset
-        return bestSolution;
-    }
-
-    private boolean checkMixedConstraints(int[][] matrix, int[] target, int nLights, int nJoltages, int[] solution) {
-        int nButtons = matrix[0].length;
-        
-        // Check lights constraints (modulo 2)
-        for (int i = 0; i < nLights; i++) {
-            int sum = 0;
-            for (int j = 0; j < nButtons; j++) {
-                sum += matrix[i][j] * solution[j];
+            
+            if (!valid) continue;
+            
+            // All new target levels should be even
+            for (int j : targetAfter) {
+                if (j % 2 != 0) {
+                    valid = false;
+                    break;
+                }
             }
-            if ((sum % 2) != target[i]) {
-                return false;
+            
+            if (!valid) continue;
+            
+            // Calculate half target
+            int[] halfTarget = new int[targetAfter.length];
+            for (int i = 0; i < targetAfter.length; i++) {
+                halfTarget[i] = targetAfter[i] / 2;
+            }
+            
+            // Recursively find min presses for half target
+            int halfPresses = getMinPresses(halfTarget, patterns, buttons, memo);
+            if (halfPresses != Integer.MAX_VALUE) {
+                int totalPresses = buttonCombo.length + 2 * halfPresses;
+                minPresses = Math.min(minPresses, totalPresses);
             }
         }
         
-        // Check joltage constraints (regular arithmetic)
-        for (int i = nLights; i < nLights + nJoltages; i++) {
-            int sum = 0;
-            for (int j = 0; j < nButtons; j++) {
-                sum += matrix[i][j] * solution[j];
-            }
-            if (sum != target[i]) {
-                return false;
-            }
-        }
-        
-        return true;
+        memo.put(key, minPresses);
+        return minPresses;
     }
 
     private int solveLinearSystem(int[][] matrix, int[] target) {
@@ -709,9 +367,9 @@ public class Day10 implements Day {
                 int sum = aug[i][nVars]; // Start with RHS
                 
                 // Subtract contribution of free variables
-                for (int j = 0; j < nVars; j++) {
-                    if (aug[i][j] == 1 && var != j) {
-                        sum ^= testSolution[j];
+                for (int j = 0; j < freeCount; j++) {
+                    if (aug[i][freeVars[j]] == 1) {
+                        sum ^= ((mask >> j) & 1);
                     }
                 }
                 testSolution[var] = sum;

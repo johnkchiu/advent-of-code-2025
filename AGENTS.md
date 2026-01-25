@@ -3,15 +3,19 @@
 ## Build & Development Commands
 
 ```bash
-./gradlew build
-./gradlew run --args "1"           # Real input
-./gradlew run --args "1 --sample"  # Sample input
-./gradlew test
+./gradlew build                    # Build project
+./gradlew test                     # Run all tests
+./gradlew check                    # Run all checks (build + test)
+./gradlew run --args "1"           # Run day 1 with real input
+./gradlew run --args "1 --sample"  # Run day 1 with sample input
+
+# Single test execution
 ./gradlew test --tests "aoc.days.Day01Test"
 ./gradlew test --tests "aoc.days.Day01Test.samplePart1"
+./gradlew test --tests "Day01Test"     # Short form works too
 ```
 
-Quick workflow: `./gradlew test --tests "DayXXTest"` then `./gradlew run --args "XX"`
+**Development Workflow**: `./gradlew test --tests "DayXXTest"` → `./gradlew run --args "XX"`
 
 ## Code Style Guidelines
 
@@ -123,8 +127,8 @@ public class DayXXTest {
 ```
 
 ### Testing Patterns
-- **File-based**: Use `aoc.Input.read(1, true)` for sample files (example with day 1)
-- **Embedded**: Use string literals for simple test cases
+- **File-based**: Use `aoc.Input.read(1, true)` for sample files
+- **Embedded**: Use string literals for simple test cases  
 - **Assertions**: `assertEquals(expected, actual)` pattern
 - **No mocking**: Pure unit tests with real implementations
 
@@ -195,3 +199,20 @@ DAYS.put(XX, new DayXX());  // Replace XX with your day number
 - Comprehensive sample testing
 
 This codebase prioritizes algorithmic problem-solving with minimal boilerplate, enabling focus on implementing clean Advent of Code solutions.
+
+## Tools & Environment
+
+### Java Version
+- **Target**: Java 21
+- **Features**: Leverage Java 21 features when helpful
+- **Compatibility**: Project uses Java 21 toolchain
+
+### Build System
+- **Gradle**: Kotlin DSL (`build.gradle.kts`)
+- **Testing**: JUnit 5.10.2
+- **Application**: Main class `aoc.Runner`
+- **Resources**: Input files copied to resources on build
+
+### IDE Integration
+- No IDE configuration required
+- Standard Gradle project structure
